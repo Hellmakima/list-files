@@ -1,4 +1,4 @@
-# LSD: ls detailed
+# LSD: `ls` detailed
 
 ## Overview
 
@@ -6,114 +6,127 @@
 
 ## Features
 
-- Lists files and directories in a tree format.
-- Accepts a relative or absolute path as an argument, or defaults to the current directory if no argument is provided.
-- Simple to use and lightweight.
+* Lists files and directories in a neat tree format.
+* Accepts relative or absolute path; defaults to current directory.
+* Supports multiple `--include` and `--exclude` filters to show/hide files or folders by pattern.
+* Limits maximum recursion depth (`-d` / `--max-depth`).
+* Limits max number of subitems per directory (`-m` / `--max-items`).
+* Gracefully falls back to ASCII when console can’t display Unicode; suggests using `-o` flag for UTF-8 output.
+* Optionally outputs to file with UTF-8 encoding.
+* Lightweight, no external dependencies beyond Python 3.6+.
 
 ## Requirements
 
-- Python 3.6 or later.
+* Python 3.6 or later.
 
 ## Usage Instructions
 
 ### Option 1: Direct Download and Use
 
-1. **Download the ************`lsd.exe`************ file**:
+1. **Download the `lsd.exe` file**:
 
-   - Save it to a desired folder on your system.
+   * Save it to a folder of your choice.
 
-2. **Add the script to your PATH**:
+2. **Add the executable to your PATH**:
 
-   - **On Windows**:
-     1. Save `lsd.exe` to a directory already in your PATH (e.g., `C:\Windows\System32`) or create a new directory (e.g., `C:\tools`), move `lsd.exe` there, and add this directory to your PATH environment variable.
-     2. To add a directory to PATH:
-        - Open `System Properties` > `Environment Variables`.
-        - Under `System Variables`, find `Path`, click `Edit`, and add the directory.
-   - **On Linux/MacOS**:
-     1. There is no steps, recompile it.
+   * **On Windows**:
 
-3. **Run the script**:
+     * Place `lsd.exe` in a directory already in your PATH (e.g., `C:\Windows\System32`) or create a new directory (e.g., `C:\tools`), move `lsd.exe` there, and add this directory to your PATH environment variable.
+     * To add directory to PATH:
+
+       * Open `System Properties` > `Environment Variables`.
+       * Under `System Variables`, select `Path`, click `Edit`, then add the new directory.
+
+   * **On Linux/MacOS**:
+
+     * Build your own executable with PyInstaller (see below).
+
+3. **Run the tool**:
 
    ```bash
    lsd <directory>
    ```
 
-   - If no directory is specified, the current directory will be listed.
+   * If no directory is specified, the current directory will be listed.
 
-### Option 2: Create Your Own Executable
+### Option 2: Build Your Own Executable
 
-1. **Install `pyinstaller`**:
+1. **Install PyInstaller**:
 
    ```bash
    pip install pyinstaller
    ```
 
-2. **Test and Tweak**:
+2. **Edit `lsd.py` as needed**, e.g., add colors or tweak options.
 
-   - Test to see if the file runs properly.
-   - Edit the `lsd.py` file according to your needs.
-   - Add color scheme if you want. (implement it yourself)
-  
-4. **Create an Executable**:
+3. **Build executable**:
 
    ```bash
    pyinstaller --onefile lsd.py
    ```
 
-5. **Locate the Executable**:
+4. **Find your executable**:
 
-   - The executable will be located in the `dist/` folder.
+   * It will be in the `dist/` folder.
 
-6. **Add Executable to PATH**:
+5. **Add executable to your PATH**:
 
-   - Move the generated `lsd.exe` (on Windows) or `lsd` (on Linux/MacOS) to a directory in your PATH.
+   * Move `lsd.exe` (Windows) or `lsd` (Linux/MacOS) to a directory in your PATH.
 
-7. **Run the Executable**:
+6. **Run the executable**:
 
    ```bash
    lsd <directory>
    ```
 
+## Command Line Options
+
+* `-d`, `--max-depth <int>`: Limit recursion depth.
+* `-m`, `--max-items <int>`: Limit max subitems per directory.
+* `-i`, `--include <pattern>`: Show only files matching any of the include patterns (can be used multiple times).
+* `-x`, `--exclude <pattern>`: Exclude files or folders matching any of these patterns (can be used multiple times).
+* `-o`, `--output <file>`: Write output to UTF-8 encoded file instead of console.
+* `-h`, `--help`, `/?`: Show help message.
+
 ## Examples
 
-### Example 1: Listing a Directory
+### List current directory
 
 ```bash
 lsd .
 ```
 
-Output:
-
-```
-./
-├── file1.txt
-├── file2.py
-└── subdir/
-    ├── file3.md
-    └── file4.jpg
-```
-
-### Example 2: Specifying a Directory
+### List up to 2 levels deep
 
 ```bash
-lsd some_folder
+lsd -d 2
 ```
 
-Output:
+### Show only files in `homework` directory and exclude `.txt` files
 
+```bash
+lsd -i homework -x txt
 ```
-some_folder/
-├── example1.txt
-└── example2.txt
+
+### Limit to 5 items per directory
+
+```bash
+lsd -m 5
+```
+
+### Output to a file
+
+```bash
+lsd -o output.txt
 ```
 
 ## Notes
 
-- Ensure that Python is installed and accessible from your command line.
-- The script handles errors like missing directories and provides meaningful error messages.
-- This is not the surce code for the included exe file. please make sure it runs properly before making exe/out file.
-- Don't trust `.exe` files online.
+* Unicode tree characters fall back to ASCII if your console can’t display them.
+* For full Unicode output, use `-o` to write to a file.
+* Always verify the executable or build your own for security.
+* Requires Python 3.6+. IDK I use 3.13
 
 ## License
 
-This tool is provided "as is" without any guarantees. Use at your own risk.
+Provided "as is" without warranty. Use at your own risk.
