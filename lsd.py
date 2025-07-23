@@ -1,26 +1,26 @@
 import os
 import sys
 import argparse
-from contextlib import redirect_stdout
 
 class DirectoryLister:
-    def __init__(self, include_patterns=None, exclude_patterns=None):
+    def __init__(self, include_patterns=None, exclude_patterns=None, directories=False):
         self.include_patterns = include_patterns or []
         self.exclude_patterns = exclude_patterns or []
+        self.directories_only = directories
         self._warned_encoding = False
 
     def should_include(self, path):
         """Apply excludes to everything; apply includes to files only."""
+        if self.directories_only and not os.path.isdir(path):
+            return False
         if any(p in path for p in self.exclude_patterns):
             return False
         if self.include_patterns and not os.path.isdir(path):
             return any(p in path for p in self.include_patterns)
         return True
 
-    def list_files(self, directory, prefix='', level=0,
-                   max_depth=None, max_items=None, output_file=None):
+    def list_files(self, directory, prefix='', level=0, max_depth=None, max_items=None, output_file=None):
         """Pretty tree printer that never mis-draws branches."""
-        # Stop if depth exceeded
         if max_depth is not None and level >= max_depth:
             return
 
@@ -36,13 +36,14 @@ class DirectoryLister:
 
         # Separate dirs and files
         dirs = [i for i in all_items if os.path.isdir(os.path.join(directory, i))]
-        files = [i for i in all_items if not os.path.isdir(os.path.join(directory, i))]
+        files = [] if self.directories_only else [i for i in all_items if not os.path.isdir(os.path.join(directory, i))]
 
         # Apply max_items limit prioritizing directories
         if max_items is not None:
             dirs = dirs[:max_items]
-            remaining = max_items - len(dirs)
-            files = files[:remaining] if remaining > 0 else []
+            if not self.directories_only:
+                remaining = max_items - len(dirs)
+                files = files[:remaining] if remaining > 0 else []
         items = dirs + files
 
         # Items hidden due to max_items
@@ -94,6 +95,7 @@ Arguments:
   DIRECTORY       The root directory to list. Defaults to the current directory.
   
 Options:
+  -r, --directories            Only show directories.
   -d, --max-depth MAX_DEPTH    Maximum recursion depth from the starting location. Default is infinite.
   -m, --max-items MAX_ITEMS    Maximum number of subitems to display per directory.
   -i, --include PATTERN        Only show paths that include this pattern.
@@ -117,8 +119,9 @@ if __name__ == "__main__":
     # Argument parsing
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("directory", nargs="?", default=".", help="Root directory to list.")
-    parser.add_argument("-d", "--max-depth", type=int, help="Maximum depth for recursion.")
+    parser.add_argument("-r", "--directories", action="store_true", help="Only list directories.")
     parser.add_argument("-m", "--max-items", type=int, help="Maximum number of subitems per directory.")
+    parser.add_argument("-d", "--max-depth", type=int, help="Maximum depth for recursion.")
     parser.add_argument("-i", "--include", action='append', help="Only include paths that contain these patterns")
     parser.add_argument("-x", "--exclude", action='append', help="Exclude paths that contain these patterns")
     parser.add_argument("-o", "--output", help="Write output to specified file.")
@@ -134,7 +137,7 @@ if __name__ == "__main__":
     # Validate directory
     directory = args.directory
     if not os.path.exists(directory):
-        print(f"Error: The directory '{directory}' does not exist.")
+        print(f"Error: Couldn't find '{directory}'.")
         sys.exit(1)
 
     # Clear output file if it exists
@@ -148,13 +151,24 @@ if __name__ == "__main__":
     # Create lister with patterns
     lister = DirectoryLister(
         include_patterns=args.include if args.include else [],
-        exclude_patterns=args.exclude if args.exclude else []
+        exclude_patterns=args.exclude if args.exclude else [],
+        directories=args.directories
     )
 
     # List files with options
-    lister.list_files(
-        directory=directory,
-        max_depth=args.max_depth,
-        max_items=args.max_items,
-        output_file=args.output
-    )
+    try:
+        lister.list_files(
+            directory=directory,
+            max_depth=args.max_depth,
+            max_items=args.max_items,
+            output_file=args.output
+        )
+    except KeyboardInterrupt:
+        print('...INTR')
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error occured: {e}")
+        print_stacktrace = input("Want to print stacktrace(Y/n)")
+        if print_stacktrace.lower() == 'y':
+            import traceback
+            print(traceback.format_exc())

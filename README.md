@@ -1,132 +1,126 @@
 # LSD: `ls` detailed
 
-## Overview
+Python-based recursive directory lister. Think `tree`, but all Python. Clean output. Filters. No external deps.
 
-`lsd` is a Python-based tool to recursively list the contents of directories in a structured tree format. It mimics the behavior of Linux's `tree` command but is implemented entirely in Python and shows all sub-directories and files.
+---
 
 ## Features
 
-* Lists files and directories in a neat tree format.
-* Accepts relative or absolute path; defaults to current directory.
-* Supports multiple `--include` and `--exclude` filters to show/hide files or folders by pattern.
-* Limits maximum recursion depth (`-d` / `--max-depth`).
-* Limits max number of subitems per directory (`-m` / `--max-items`).
-* Gracefully falls back to ASCII when console can’t display Unicode; suggests using `-o` flag for UTF-8 output.
-* Optionally outputs to file with UTF-8 encoding.
-* Lightweight, no external dependencies beyond Python 3.6+.
+* Lists directories/files in a clean tree format.
+* Supports relative or absolute paths.
+* Includes/excludes files/folders by pattern (`--include`, `--exclude`).
+* Limit recursion depth (`--max-depth`) or number of items per dir (`--max-items`).
+* Optionally show only directories (`--directories`).
+* UTF-8 tree output with ASCII fallback.
+* Can write to a file (`--output`) with UTF-8 encoding.
+* Lightweight: Python 3.6+, no external deps.
+
+---
 
 ## Requirements
 
-* Python 3.6 or later.
+* Python 3.6+
+  (You’re fine if you're on 3.13 or whatever.)
 
-## Usage Instructions
+---
 
-### Option 1: Direct Download and Use
+## Usage
 
-1. **Download the `lsd.exe` file**:
-
-   * Save it to a folder of your choice.
-
-2. **Add the executable to your PATH**:
-
-   * **On Windows**:
-
-     * Place `lsd.exe` in a directory already in your PATH (e.g., `C:\Windows\System32`) or create a new directory (e.g., `C:\tools`), move `lsd.exe` there, and add this directory to your PATH environment variable.
-     * To add directory to PATH:
-
-       * Open `System Properties` > `Environment Variables`.
-       * Under `System Variables`, select `Path`, click `Edit`, then add the new directory.
-
-   * **On Linux/MacOS**:
-
-     * Build your own executable with PyInstaller (see below).
-
-3. **Run the tool**:
-
-   ```bash
-   lsd <directory>
-   ```
-
-   * If no directory is specified, the current directory will be listed.
-
-### Option 2: Build Your Own Executable
-
-1. **Install PyInstaller**:
-
-   ```bash
-   pip install pyinstaller
-   ```
-
-2. **Edit `lsd.py` as needed**, e.g., add colors or tweak options.
-
-3. **Build executable**:
-
-   ```bash
-   pyinstaller --onefile lsd.py
-   ```
-
-4. **Find your executable**:
-
-   * It will be in the `dist/` folder.
-
-5. **Add executable to your PATH**:
-
-   * Move `lsd.exe` (Windows) or `lsd` (Linux/MacOS) to a directory in your PATH.
-
-6. **Run the executable**:
-
-   ```bash
-   lsd <directory>
-   ```
-
-## Command Line Options
-
-* `-d`, `--max-depth <int>`: Limit recursion depth.
-* `-m`, `--max-items <int>`: Limit max subitems per directory.
-* `-i`, `--include <pattern>`: Show only files matching any of the include patterns (can be used multiple times).
-* `-x`, `--exclude <pattern>`: Exclude files or folders matching any of these patterns (can be used multiple times).
-* `-o`, `--output <file>`: Write output to UTF-8 encoded file instead of console.
-* `-h`, `--help`, `/?`: Show help message.
-
-## Examples
-
-### List current directory
+### Run from source
 
 ```bash
-lsd .
+python lsd.py [DIRECTORY] [OPTIONS]
 ```
 
-### List up to 2 levels deep
+If no directory is given, it uses the current one.
+
+### Example commands
 
 ```bash
-lsd -d 2
+python lsd.py .
+  # Show current directory recursively.
+
+python lsd.py ../Downloads -d 2
+  # Show up to 2 levels deep.
+
+python lsd.py -i ".txt" -x "temp" -o output.txt
+  # Include only .txt files, exclude anything with "temp", save to file.
+
+python lsd.py -m 5 -r
+  # Show only directories, max 5 per dir.
 ```
 
-### Show only files in `homework` directory and exclude `.txt` files
+---
+
+## CLI Options
+
+```
+Usage: python lsd.py [DIRECTORY] [OPTIONS]
+
+Arguments:
+  DIRECTORY                 The root directory to list. Defaults to the current directory.
+
+Options:
+  -d, --max-depth N        Limit recursion depth to N levels.
+  -m, --max-items N        Limit max number of subitems per directory to N.
+  -i, --include PATTERN    Show only files or folders matching this pattern. Can be used multiple times.
+  -x, --exclude PATTERN    Exclude files or folders matching this pattern. Can be used multiple times.
+  -r, --directories        Only show directories (no files).
+  -o, --output FILE        Write output to FILE (UTF-8 encoded).
+  -h, --help, /?           Show this help message and exit.
+```
+
+---
+
+## Building Executable
+
+If you want a standalone `.exe` or binary:
+
+### 1. Install PyInstaller
 
 ```bash
-lsd -i homework -x txt
+pip install pyinstaller
 ```
 
-### Limit to 5 items per directory
+### 2. Build
 
 ```bash
-lsd -m 5
+pyinstaller --onefile lsd.py
 ```
 
-### Output to a file
+Output will be in `dist/lsd` (or `lsd.exe` on Windows).
+
+### 3. Add to PATH
+
+Move `lsd`/`lsd.exe` to a folder in your `PATH`.
+
+* **Windows**:
+  Use `C:\tools` or something, then add that folder to your PATH in System Properties.
+
+* **Linux/macOS**:
+  Drop it in `~/bin`, `/usr/local/bin`, etc.
+
+---
+
+## Unicode Output
+
+* Tree uses Unicode chars (`├──`, `└──`, etc).
+* Falls back to ASCII if console doesn't support it.
+* To force full Unicode (e.g. in a file), use `-o`:
 
 ```bash
-lsd -o output.txt
+python lsd.py -o output.txt
 ```
 
-## Notes
+---
 
-* Unicode tree characters fall back to ASCII if your console can’t display them.
-* For full Unicode output, use `-o` to write to a file.
-* Always verify the executable or build your own for security.
-* Requires Python 3.6+. IDK I use 3.13
+## Security
+
+* If using prebuilt `lsd.exe`, verify source.
+* Or just build your own.
+
+---
 
 ## License
 
-Provided "as is" without warranty. Use at your own risk.
+MIT-ish. No warranty. Use at your own risk. You break it, you bought it.
