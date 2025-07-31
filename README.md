@@ -1,6 +1,6 @@
 # LSD: `ls` detailed
 
-Python-based recursive directory lister. Think `tree`, but all Python. Clean output. Filters. No external deps.
+Python-based recursive directory lister. Similar to `tree` on Linux, but all Python.
 
 ---
 
@@ -67,7 +67,7 @@ Options:
   -x, --exclude PATTERN    Exclude files or folders matching this pattern. Can be used multiple times.
   -r, --directories        Only show directories (no files).
   -o, --output FILE        Write output to FILE (UTF-8 encoded).
-  -h, --help, /?           Show this help message and exit.
+  -h, --help, /?           Show help.
   -s, --size               Show file size.
 ```
 
@@ -124,4 +124,4 @@ python lsd.py -o output.txt
 
 ## License
 
-MIT-ish. No warranty. Use at your own risk. You break it, you bought it.
+MIT
