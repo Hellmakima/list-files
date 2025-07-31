@@ -3,21 +3,31 @@ import sys
 import argparse
 
 class DirectoryLister:
-    def __init__(self, include_patterns=None, exclude_patterns=None, directories=False):
+    def __init__(self, include_patterns=None, relative_path="", exclude_patterns=None, directories=False, show_size=False):
         self.include_patterns = include_patterns or []
         self.exclude_patterns = exclude_patterns or []
         self.directories_only = directories
         self._warned_encoding = False
+        self.show_size = show_size
+        self.relative_path = relative_path
 
     def should_include(self, path):
         """Apply excludes to everything; apply includes to files only."""
-        if self.directories_only and not os.path.isdir(path):
+        file_relative_path = os.path.relpath(path, self.relative_path)
+        if self.directories_only and os.path.isfile(path):
             return False
-        if any(p in path for p in self.exclude_patterns):
+        if any(p in file_relative_path for p in self.exclude_patterns):
             return False
         if self.include_patterns and not os.path.isdir(path):
-            return any(p in path for p in self.include_patterns)
+            return any(p in file_relative_path for p in self.include_patterns)
         return True
+    
+    def _format_size(self, size):
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size < 1024:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} PB"
 
     def list_files(self, directory, prefix='', level=0, max_depth=None, max_items=None, output_file=None):
         """Pretty tree printer that never mis-draws branches."""
@@ -36,7 +46,7 @@ class DirectoryLister:
 
         # Separate dirs and files
         dirs = [i for i in all_items if os.path.isdir(os.path.join(directory, i))]
-        files = [] if self.directories_only else [i for i in all_items if not os.path.isdir(os.path.join(directory, i))]
+        files = [] if self.directories_only else [i for i in all_items if not i in dirs]
 
         # Apply max_items limit prioritizing directories
         if max_items is not None:
@@ -54,7 +64,9 @@ class DirectoryLister:
             is_last = (idx == len(items) - 1) and (truncated == 0)
             connector = '└── ' if is_last else '├── '
             full_path = os.path.join(directory, name)
-            display = f"{prefix}{connector}{name}/" if os.path.isdir(full_path) else f"{prefix}{connector}{name}"
+            display = f"{prefix}{connector}{name}/" if os.path.isdir(full_path) else f"{prefix}{connector}{name}" 
+            if self.show_size and os.path.isfile(full_path):
+                display += f" {self._format_size(os.path.getsize(full_path))}"
             self._print(display, output_file)
 
             if os.path.isdir(full_path):
@@ -80,7 +92,7 @@ class DirectoryLister:
             return
         try:
             print(text)
-        except UnicodeEncodeError:               # CP-1252 et al choke on box-chars
+        except UnicodeEncodeError:               # CP-1252 
             if not self._warned_encoding:
                 sys.stderr.write("Using ASCII fallback. Consider -o <file> for full UTF-8 output.\n")
                 self._warned_encoding = True
@@ -102,6 +114,7 @@ Options:
   -x, --exclude PATTERN        Exclude paths that contain this pattern.
   -o, --output FILE            Write output to specified file instead of console.
   -h, --help                   Display this help message.
+  -s, --size                   Display file size.
 
 Examples:
   python lsd.py ../Downloads/test -d 2
@@ -126,6 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("-x", "--exclude", action='append', help="Exclude paths that contain these patterns")
     parser.add_argument("-o", "--output", help="Write output to specified file.")
     parser.add_argument("-h", "--help", action="store_true", help="Display help.")
+    parser.add_argument("-s", "--size", action="store_true", help="Display file size.")
 
     args = parser.parse_args()
 
@@ -152,7 +166,9 @@ if __name__ == "__main__":
     lister = DirectoryLister(
         include_patterns=args.include if args.include else [],
         exclude_patterns=args.exclude if args.exclude else [],
-        directories=args.directories
+        directories=args.directories,
+        show_size=args.size,
+        relative_path=directory
     )
 
     # List files with options

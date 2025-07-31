@@ -68,6 +68,7 @@ Options:
   -r, --directories        Only show directories (no files).
   -o, --output FILE        Write output to FILE (UTF-8 encoded).
   -h, --help, /?           Show this help message and exit.
+  -s, --size               Show file size.
 ```
 
 ---
