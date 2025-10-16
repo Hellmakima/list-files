@@ -3,31 +3,67 @@ import sys
 import argparse
 
 class DirectoryLister:
-    def __init__(self, include_patterns=None, relative_path="", exclude_patterns=None, directories=False, show_size=False):
+    def __init__(self, include_patterns=None, relative_path="", exclude_patterns=None, directories=False, show_size=False, gitignore=False):
         self.include_patterns = include_patterns or []
         self.exclude_patterns = exclude_patterns or []
         self.directories_only = directories
         self._warned_encoding = False
         self.show_size = show_size
         self.relative_path = relative_path
+        self.gitignore = gitignore
+        self.gitignore_patterns = []
 
     def should_include(self, path):
         """Apply excludes to everything; apply includes to files only."""
         file_relative_path = os.path.relpath(path, self.relative_path)
+
         if self.directories_only and os.path.isfile(path):
             return False
         if any(p in file_relative_path for p in self.exclude_patterns):
             return False
+
+        # Apply regex-based gitignore
+        include = True
+        for base_dir, patterns in self.gitignore_patterns:
+            rel_to_git_dir = os.path.relpath(path, base_dir)
+            for pat in patterns:
+                if pat in rel_to_git_dir:
+                    return False
+
+        # Apply include patterns only to files
         if self.include_patterns and not os.path.isdir(path):
-            return any(p in file_relative_path for p in self.include_patterns)
-        return True
+            include = include and any(p in file_relative_path for p in self.include_patterns)
+
+        return include
+
     
     def _format_size(self, size):
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
             if size < 1024:
                 return f"{size:.1f} {unit}"
             size /= 1024
         return f"{size:.1f} PB"
+
+    def _add_gitignore_patterns(self, directory):
+        gitignore_path = os.path.join(directory, '.gitignore')
+        patterns = []
+
+        try:
+            with open(gitignore_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#') or line.startswith('!'):
+                        continue  # ignore comments and negation lines
+
+                    # Remove * and / characters
+                    cleaned = line.replace('*', '').replace('/', '')
+
+                    if cleaned:  # skip empty lines after cleaning
+                        patterns.append(cleaned)
+        except Exception:
+            pass
+
+        return directory, patterns
 
     def list_files(self, directory, prefix='', level=0, max_depth=None, max_items=None, output_file=None):
         """Pretty tree printer that never mis-draws branches."""
@@ -40,6 +76,14 @@ class DirectoryLister:
         except PermissionError:
             self._print(f"{prefix}└── [Permission Denied]", output_file)
             return
+        
+        found_gitignore = False
+        if self.gitignore:
+            # see if .gitignore exists
+            if os.path.exists(os.path.join(directory, '.gitignore')):
+                found_gitignore = True
+                gitignore_pattern = self._add_gitignore_patterns(directory)
+                self.gitignore_patterns.append(gitignore_pattern)
 
         # Filter with include/exclude
         all_items = [i for i in all_items if self.should_include(os.path.abspath(os.path.join(directory, i)))]
@@ -77,6 +121,10 @@ class DirectoryLister:
         # Show "... (N more)" if anything was skipped
         if truncated:
             self._print(f"{prefix}└── ... ({truncated} more)", output_file)
+        
+        # remove gitignore patterns added in this call
+        if found_gitignore:
+            self.gitignore_patterns.pop()
 
     def _ascii_fallback(self, s: str) -> str:
         """Replace U-lines with ASCII twins."""
@@ -91,6 +139,10 @@ class DirectoryLister:
                 f.write(text + '\n')
             return
         try:
+            if "─ ." in text: # hidden files (grey)
+                text = text.replace("─ .", "─ \033[1;30m.") + "\033[0m"
+            if text.endswith('/'):
+                text = text.replace("─ ", "─ \033[1;32m").replace("/", "\033[0m/")
             print(text)
         except UnicodeEncodeError:               # CP-1252 
             if not self._warned_encoding:
@@ -113,6 +165,7 @@ Options:
   -i, --include PATTERN        Only show paths that include this pattern.
   -x, --exclude PATTERN        Exclude paths that contain this pattern.
   -o, --output FILE            Write output to specified file instead of console.
+  -g, --gitignore              Ignore .gitignore patterns.
   -h, --help                   Display this help message.
   -s, --size                   Display file size.
 
@@ -138,6 +191,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--include", action='append', help="Only include paths that contain these patterns")
     parser.add_argument("-x", "--exclude", action='append', help="Exclude paths that contain these patterns")
     parser.add_argument("-o", "--output", help="Write output to specified file.")
+    parser.add_argument("-g", "--gitignore", action="store_true", help="Ignore .gitignore patterns")
     parser.add_argument("-h", "--help", action="store_true", help="Display help.")
     parser.add_argument("-s", "--size", action="store_true", help="Display file size.")
 
@@ -162,13 +216,18 @@ if __name__ == "__main__":
             print(f"Error clearing output file: {e}")
             sys.exit(1)
 
+    exclude_patterns = args.exclude if args.exclude else []
+    if args.gitignore:
+        exclude_patterns.append('.git')
+    
     # Create lister with patterns
     lister = DirectoryLister(
         include_patterns=args.include if args.include else [],
-        exclude_patterns=args.exclude if args.exclude else [],
+        exclude_patterns=exclude_patterns,
         directories=args.directories,
         show_size=args.size,
-        relative_path=directory
+        relative_path=directory,
+        gitignore=args.gitignore
     )
 
     # List files with options
@@ -183,8 +242,9 @@ if __name__ == "__main__":
         print('...INTR')
         sys.exit(0)
     except Exception as e:
-        print(f"Error occured: {e}")
-        print_stacktrace = input("Want to print stacktrace(Y/n)")
+        print(f"\033[1;31mError occured: \033[0m \033[1;33m{e}\033[0m\a")
+        print_stacktrace = input("Want to print stacktrace(y/n)")
         if print_stacktrace.lower() == 'y':
             import traceback
             print(traceback.format_exc())
+            print("Please report this issue at \033[1;34mhttps://github.com/Hellmakima/list-files/issues\033[0m")

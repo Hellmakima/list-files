@@ -6,20 +6,20 @@ Python-based recursive directory lister. Similar to `tree` on Linux, but all Pyt
 
 ## Features
 
-* Lists directories/files in a clean tree format.
-* Supports relative or absolute paths.
-* Includes/excludes files/folders by pattern (`--include`, `--exclude`).
-* Limit recursion depth (`--max-depth`) or number of items per dir (`--max-items`).
-* Optionally show only directories (`--directories`).
-* UTF-8 tree output with ASCII fallback.
-* Can write to a file (`--output`) with UTF-8 encoding.
-* Lightweight: Python 3.6+, no external deps.
+- Lists directories/files in a clean tree format.
+- Supports relative or absolute paths.
+- Includes/excludes files/folders by pattern (`--include`, `--exclude`).
+- Limit recursion depth (`--max-depth`) or number of items per dir (`--max-items`).
+- Optionally show only directories (`--directories`).
+- UTF-8 tree output with ASCII fallback.
+- Can write to a file (`--output`) with UTF-8 encoding.
+- Lightweight: Python 3.6+, no external deps.
 
 ---
 
 ## Requirements
 
-* Python 3.6+
+- Python 3.6+
   (You’re fine if you're on 3.13 or whatever.)
 
 ---
@@ -95,19 +95,19 @@ Output will be in `dist/lsd` (or `lsd.exe` on Windows).
 
 Move `lsd`/`lsd.exe` to a folder in your `PATH`.
 
-* **Windows**:
+- **Windows**:
   Use `C:\tools` or something, then add that folder to your PATH in System Properties.
 
-* **Linux/macOS**:
+- **Linux/macOS**:
   Drop it in `~/bin`, `/usr/local/bin`, etc.
 
 ---
 
 ## Unicode Output
 
-* Tree uses Unicode chars (`├──`, `└──`, etc).
-* Falls back to ASCII if console doesn't support it.
-* To force full Unicode (e.g. in a file), use `-o`:
+- Tree uses Unicode chars (`├──`, `└──`, etc).
+- Falls back to ASCII if console doesn't support it.
+- To force full Unicode (e.g. in a file), use `-o`:
 
 ```bash
 python lsd.py -o output.txt
@@ -117,8 +117,19 @@ python lsd.py -o output.txt
 
 ## Security
 
-* If using prebuilt `lsd.exe`, verify source.
-* Or just build your own.
+- If using prebuilt `lsd.exe`, verify source.
+- Or just build your own with PyInstaller.
+
+---
+
+## TODOs
+
+- Add proper support for .gitignore patterns with fnmatch, regex or pathspec
+- Improve performance by using
+  - os.scandir
+  - multiprocessing
+  - different languages (C, Rust, Go)
+- write tests
 
 ---
 
