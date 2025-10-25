@@ -1,4 +1,4 @@
-__version__ = "1.2.0"
+__version__ = "1.2.1"
 __annotations__ = {
     "author": "Sufiyan Attar",
     "email": "sufiyanhattar@gmail.com",
@@ -7,8 +7,8 @@ __annotations__ = {
 
 
 from os import (
-    path as os_path, 
-    listdir as os_listdir, 
+    path as os_path,
+    listdir as os_listdir,
     remove as os_remove,
     stat as os_stat
 )
@@ -27,10 +27,11 @@ color_reset: str = "\033[0m"
 
 @dataclass
 class DirectoryLister:
+    # ...fields...
     _warned_encoding: bool = False
     directories_only: bool = False
     exclude_patterns: List[str] = field(default_factory=list)
-    gitignore_patterns: List[tuple] = field(default_factory=list)
+    gitignore_patterns: List = field(default_factory=list) # (directory, patterns)
     gitignore: bool = False
     include_patterns: List[str] = field(default_factory=list)
     list_details: bool = False
@@ -40,6 +41,7 @@ class DirectoryLister:
     show_size: bool = False
 
     def __post_init__(self):
+        """Disable ANSI colors if `no_color` flag is set."""
         if self.no_color:
             global color_red, color_green, color_blue, color_yellow, color_gray, color_reset
             color_red = ""
@@ -51,7 +53,16 @@ class DirectoryLister:
 
 
     def should_include(self, path):
-        """Apply excludes to everything; apply includes to files only."""
+        """
+        Determine if a file or directory should be included based on exclude/include patterns
+        and gitignore rules.
+
+        Args:
+            path (str): Absolute path of the file or directory.
+
+        Returns:
+            bool: True if the path should be included, False if it should be excluded.
+        """
         file_relative_path = os_path.relpath(path, self.relative_path)
 
         if self.directories_only and os_path.isfile(path):
@@ -73,8 +84,17 @@ class DirectoryLister:
 
         return include
 
-    
+
     def _format_size(self, size):
+        """
+        Convert a file size in bytes into a human-readable string with units.
+
+        Args:
+            size (int): File size in bytes.
+
+        Returns:
+            str: Human-readable file size (e.g., '1.5 KiB').
+        """
         for unit in ['B', 'KiB', 'MiB', 'GiB', 'TiB']:
             if size < 1024:
                 return f"{size:.1f} {unit}"
@@ -83,6 +103,16 @@ class DirectoryLister:
 
 
     def _format_details(self, path):
+        """
+        Return a detailed string describing the file, including last modification date,
+        size, and file permissions.
+
+        Args:
+            path (str): Absolute path of the file.
+
+        Returns:
+            str: Formatted file details.
+        """
         mtime = os_path.getmtime(path)
         formatted_time = formatter(mtime).strftime("%m/%d/%Y %H:%M")
 
@@ -93,9 +123,16 @@ class DirectoryLister:
         mode = stat_filemode(os_stat(path).st_mode)
 
         return f"({formatted_time}) {size} {mode}"
-        
+
 
     def _add_gitignore_patterns(self, directory):
+        """
+        Parse a .gitignore file in the given directory and return patterns for exclusion.
+
+        Returns:
+            tuple[str, List[str]]: Tuple containing the directory and a list of patterns.
+            str: "skip" if the .gitignore contains only '*' (ignore all files).
+        """
         gitignore_path = os_path.join(directory, '.gitignore')
         patterns = []
 
@@ -103,6 +140,10 @@ class DirectoryLister:
             with open(gitignore_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
+
+                    if line == '*':
+                        return "skip"
+
                     if not line or line.startswith('#') or line.startswith('!'):
                         continue  # ignore comments and negation lines
 
@@ -116,11 +157,30 @@ class DirectoryLister:
 
         return directory, patterns
 
+    def list_files(
+            self,
+            directory: str,
+            prefix: str = '',
+            level: int = 0,
+            max_depth: Optional[int] = None,
+            max_items: Optional[int] = None,
+            display_name: Optional[str] = None
+        ):
+        """
+        Recursively list files and directories in a tree format with optional filtering,
+        gitignore support, color, and size/details display.
 
-    def list_files(self, directory, prefix='', level=0, max_depth=None, max_items=None):
-        """Pretty tree printer that never mis-draws branches."""
-        if max_depth is not None and level >= max_depth:
-            return
+        Args:
+            directory (str): Root directory to list.
+            prefix (str): Indentation prefix used for nested directories.
+            level (int): Current recursion depth.
+            max_depth (Optional[int]): Maximum recursion depth. None for unlimited.
+            max_items (Optional[int]): Maximum number of items to display per directory.
+            display_name (Optional[str]): Optional display name for the current directory.
+
+        Returns:
+            None
+        """
 
         # Get filtered items
         try:
@@ -128,14 +188,21 @@ class DirectoryLister:
         except PermissionError:
             self._print(f"{prefix}└── [Permission Denied]")
             return
-        
+
         found_gitignore = False
         if self.gitignore:
             # see if .gitignore exists
-            if os_path.exists(os_path.join(directory, '.gitignore')):
+            if '.gitignore' in all_items:
                 found_gitignore = True
                 gitignore_pattern = self._add_gitignore_patterns(directory)
+                if gitignore_pattern == "skip": return
                 self.gitignore_patterns.append(gitignore_pattern)
+
+        if display_name:
+            self._print(display_name)
+
+        if max_depth is not None and level >= max_depth:
+            return
 
         # Filter with include/exclude
         all_items = [i for i in all_items if self.should_include(os_path.abspath(os_path.join(directory, i)))]
@@ -160,24 +227,23 @@ class DirectoryLister:
             is_last = (idx == len(items) - 1) and (truncated == 0)
             connector = '└── ' if is_last else '├── '
             full_path = os_path.join(directory, name)
-            display = f"{prefix}{connector}{name}/" if os_path.isdir(full_path) else f"{prefix}{connector}{name}" 
+            display = f"{prefix}{connector}{name}/" if os_path.isdir(full_path) else f"{prefix}{connector}{name}"
             if os_path.isfile(full_path):
                 if self.show_size and not self.list_details:
                     display += f" {self._format_size(os_path.getsize(full_path))}"
                 if self.list_details:
                     display += f" {self._format_details(full_path)}"
-
-            self._print(display)
+                self._print(display)
 
             if os_path.isdir(full_path):
                 new_prefix = prefix + ('    ' if is_last else '│   ')
                 self.list_files(full_path, new_prefix, level + 1,
-                                max_depth, max_items)
+                                max_depth, max_items, display_name=display)
 
         # Show "... (N more)" if anything was skipped
         if truncated:
             self._print(f"{prefix}└── ... ({truncated} more)")
-        
+
         # remove gitignore patterns added in this call
         if found_gitignore:
             self.gitignore_patterns.pop()
@@ -203,7 +269,7 @@ class DirectoryLister:
             if text.endswith('/'): # directories
                 text = text.replace("─ ", f"─ {color_green}").replace("/", f"{color_reset}/")
             print(text)
-        except UnicodeEncodeError:               # CP-1252 
+        except UnicodeEncodeError:               # CP-1252
             if not self._warned_encoding:
                 stderr.write("Using ASCII fallback. Consider -o <file> for full UTF-8 output.\n")
                 self._warned_encoding = True
@@ -217,9 +283,9 @@ Usage: python lsd.py [DIRECTORY] [OPTIONS]
 
 Arguments:
   DIRECTORY       The root directory to list. Defaults to the current directory.
-  
+
 Options:
-  
+
   -d, --max-depth MAX_DEPTH    Maximum recursion depth from the starting location. Default is infinite.
   -g, --gitignore              Ignore .gitignore patterns.
   -i, --include PATTERN        Only show paths that include this pattern.
@@ -266,11 +332,11 @@ if __name__ == "__main__":
     if args.help:
         display_help()
         sys_exit(0)
-    
+
     if args.version:
         print(f"lsd version 0.2.0")
         sys_exit(0)
-    
+
     if args.list:
         from datetime import datetime
         formatter = datetime.fromtimestamp
@@ -288,7 +354,7 @@ if __name__ == "__main__":
     exclude_patterns = args.exclude if args.exclude else []
     if args.gitignore:
         exclude_patterns.append('.git')
-    
+
     # Create lister with patterns
     lister = DirectoryLister(
         include_patterns=args.include if args.include else [],
@@ -321,7 +387,7 @@ if __name__ == "__main__":
             import traceback
             print(traceback.format_exc())
             print(f"Please report this issue at {color_blue}https://github.com/Hellmakima/list-files/issues{color_reset}")
-    
+
     if args.time:
         end_time = time.time()
         elapsed = end_time - start_time
