@@ -1,0 +1,11 @@
+LICENSE
+README.md
+pyproject.toml
+lsd/__init__.py
+lsd/__main__.py
+lsd/lsd.py
+lsd.egg-info/PKG-INFO
+lsd.egg-info/SOURCES.txt
+lsd.egg-info/dependency_links.txt
+lsd.egg-info/entry_points.txt
+lsd.egg-info/top_level.txt

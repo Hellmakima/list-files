@@ -1,0 +1,13 @@
+[project]
+name = "lsd"
+version = "1.2.1"
+description = "python based tree-like directory listing"
+authors = [
+    {name = "Sufiyan Attar", email = "sufiyanhattar@gmail.com"},
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[project.scripts]
+lsd = "lsd.lsd:main"
