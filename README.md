@@ -2,7 +2,13 @@
 
 Python-based recursive directory lister. Similar to `tree` on Linux, but all Python.
 
----
+# ⚠️ DEPRECATION NOTICE
+
+## 🚨 This project is no longer actively maintained.
+
+### This app is no longer being built as I found **[eza](https://github.com/eza-community/eza)** that can do everything I wanted from this — and much more.
+
+If you're looking for a powerful, modern replacement for `ls` or `tree`, I highly recommend checking out **eza**.
 
 ## Features
 
